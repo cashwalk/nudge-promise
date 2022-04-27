@@ -6,7 +6,8 @@
 
 class Promise {
   #promise
-  state = 'pending'
+  #value
+  #state = 'pending'
 
   /*
    * Promise.all
@@ -49,20 +50,16 @@ class Promise {
 
     // set resolutionFunc and rejectFunc
     this.resolutionFunc = (value) => {
-      queueMicrotask(() => {
-        if (this.state === 'pending') {
-          this.state = 'fulfilled'
-          this.value = value
-        }
-      })
+      if (this.#state === 'pending') {
+        this.#state = 'fulfilled'
+        this.#value = value
+      }
     }
     this.rejectFunc = (reason) => {
-      queueMicrotask(() => {
-        if (this.state === 'pending') {
-          this.state = 'rejected'
-          this.value = reason
-        }
-      })
+      if (this.#state === 'pending') {
+        this.#state = 'rejected'
+        this.#value = reason
+      }
     }
 
     // call executor
@@ -74,6 +71,53 @@ class Promise {
    *
    * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then
    */
+  // then(onFulfilled, onRejected) {
+  //   // replace internally onFultilled and onRejected
+  //   if (typeof onFulfilled !== 'function') {
+  //     onFulfilled = (value) => value
+  //   }
+  //   if (typeof onRejected !== 'function') {
+  //     onRejected = (reason) => {
+  //       throw new Error(reason)
+  //     }
+  //   }
+
+  //   // queue onFulfilled and onRejected callbacks
+  //   queueMicrotask(() => {
+  //     switch (this.state) {
+  //       case 'fulfilled':
+  //         try {
+  //           const fulfilledValue = onFulfilled(this.value)
+
+  //           // handle when onFulfilled returns instance of Promise
+  //           if (fulfilledValue instanceof Promise) {
+  //             switch (fulfilledValue.state) {
+  //               case 'fulfilled':
+  //                 this.value = fulfilledValue.value
+  //                 break
+  //               case 'rejected':
+  //                 this.value = fulfilledValue.value
+  //                 this.state = 'rejected'
+  //                 break
+  //             }
+  //           } else {
+  //             this.value = fulfilledValue
+  //           }
+  //           // handle onFulfilled throws an error
+  //         } catch (e) {
+  //           this.value = e
+  //           this.state = 'rejected'
+  //         }
+  //         break
+  //       case 'rejected':
+  //         this.value = onRejected(this.value)
+  //         break
+  //     }
+  //   })
+
+  //   return this
+  // }
+
   then(onFulfilled, onRejected) {
     // replace internally onFultilled and onRejected
     if (typeof onFulfilled !== 'function') {
@@ -85,42 +129,64 @@ class Promise {
       }
     }
 
+    // initiate new promise
+    this.#promise = Promise.resolve()
+
     // queue onFulfilled and onRejected callbacks
     queueMicrotask(() => {
-      switch (this.state) {
+      switch (this.#state) {
         case 'fulfilled':
+          // set promise state to pending and resolution value
+          let fulfilledValue
           try {
-            const fulfilledValue = onFulfilled(this.value)
-
-            // handle when onFulfilled returns instance of Promise
+            fulfilledValue = onFulfilled(this.#value)
             if (fulfilledValue instanceof Promise) {
-              switch (fulfilledValue.state) {
+              switch (fulfilledValue.#state) {
                 case 'pending':
-                  while (fulfilledValue.state === 'pending') {}
+                  break
+
                 case 'fulfilled':
-                  this.value = fulfilledValue.value
+                  this.#promise.callResolutionOrRejectFunc(
+                    'resolve',
+                    fulfilledValue.#value,
+                  )
                   break
                 case 'rejected':
-                  this.value = fulfilledValue.value
-                  this.state = 'rejected'
+                  this.#promise.callResolutionOrRejectFunc(
+                    'reject',
+                    fulfilledValue.#value,
+                  )
                   break
               }
             } else {
-              this.value = fulfilledValue
+              this.#promise.callResolutionOrRejectFunc(
+                'resolve',
+                fulfilledValue,
+              )
             }
-            // handle onFulfilled throws an error
           } catch (e) {
-            this.value = e
-            this.state = 'rejected'
+            fulfilledValue = e
+            this.#promise.callResolutionOrRejectFunc('reject', fulfilledValue)
           }
           break
         case 'rejected':
-          this.value = onRejected(this.value)
+          let rejectedValue
+          rejectedValue = onRejected(this.#value)
+          if (rejectedValue instanceof Promise) {
+            this.#promise = rejectedValue
+          } else {
+            this.#promise.callResolutionOrRejectFunc('reject', rejectedValue)
+          }
           break
       }
     })
 
-    return this
+    return this.#promise
+  }
+
+  callResolutionOrRejectFunc(type, value) {
+    this.#state = 'pending'
+    type === 'resolve' ? this.resolutionFunc(value) : this.rejectFunc(value)
   }
 
   /*

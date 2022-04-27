@@ -141,7 +141,7 @@ describe('new Promise(executor)', () => {
 })
 
 describe('Promise.prototype.then(onFulfilled, onRejected)', () => {
-  describe('When promise resolves', () => {
+  describe.only('When promise resolves', () => {
     describe('When onFulfilled is not a function', () => {
       it("returns promise which is fulfilled with the original promise's value as its value", (done) => {
         Promise.resolve(123)
@@ -153,7 +153,7 @@ describe('Promise.prototype.then(onFulfilled, onRejected)', () => {
       })
     })
 
-    describe.only('When onFulfilled is a function', () => {
+    describe('When onFulfilled is a function', () => {
       describe('When onFulfilled returns a value', () => {
         it("returns promise which is fulfilled with onFulfilled's return value as its value", (done) => {
           Promise.resolve(123)
@@ -216,7 +216,7 @@ describe('Promise.prototype.then(onFulfilled, onRejected)', () => {
       })
 
       describe('When onFulfilled another pending promise object', () => {
-        it("returns promise which follows the onFulfilled's return value and adopts its eventual state", (done) => {
+        it.only("returns promise which follows the onFulfilled's return value and adopts its eventual state", (done) => {
           Promise.resolve(123)
             .then(
               (_) =>
