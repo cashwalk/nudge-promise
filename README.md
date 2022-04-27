@@ -6,6 +6,34 @@ Following is the main implementation file:
 
 [src/Promise.js](src/Promise.js)
 
+## Log
+
+what i did
+
+### constructor
+
+- handle TypeError
+- add `resolutionFunc` and `rejectFunc` methods to an instance of Promise
+- call `executor`
+
+### resolutionFunc
+
+- enqueue a callback which change value and state of the Promise on microtask
+
+### rejectFunc
+
+- enqueue a callback which change value and state of the Promise on microtask
+
+### then
+
+- set default onFulfilled and onRejected callback when arguments is not a function
+- enqueue a callback which change value and state of the Promise calling either onFulfilled or onRejected callback
+- return this
+
+### catch
+
+- call this.then
+
 ## Development
 
 ```bash

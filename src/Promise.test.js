@@ -153,7 +153,7 @@ describe('Promise.prototype.then(onFulfilled, onRejected)', () => {
       })
     })
 
-    describe('When onFulfilled is a function', () => {
+    describe.only('When onFulfilled is a function', () => {
       describe('When onFulfilled returns a value', () => {
         it("returns promise which is fulfilled with onFulfilled's return value as its value", (done) => {
           Promise.resolve(123)
