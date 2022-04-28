@@ -139,7 +139,7 @@ class Promise {
   }
 
   thenQueueMicrotask(onFulfilled, onRejected) {
-    switch (this.#state) {
+    switch (this.state) {
       case 'pending':
         // if Promise is pending state enqueue microtask
         queueMicrotask(() => this.thenQueueMicrotask(onFulfilled, onRejected))
@@ -148,51 +148,83 @@ class Promise {
         // set promise state to pending and resolution value
         let fulfilledValue
         try {
-          fulfilledValue = onFulfilled(this.#value)
+          fulfilledValue = onFulfilled(this.value)
+
           if (fulfilledValue instanceof Promise) {
-            switch (fulfilledValue.#state) {
+            switch (fulfilledValue.state) {
               case 'pending':
+                this.state = 'pending'
                 queueMicrotask(() =>
-                  this.thenQueueMicrotask(onFulfilled, onRejected),
+                  this.promise.callResolutionOrRejectFunc(
+                    'resolve',
+                    () => fulfilledValue.value,
+                  ),
                 )
                 break
 
               case 'fulfilled':
-                this.#promise.callResolutionOrRejectFunc(
+                this.promise.callResolutionOrRejectFunc(
                   'resolve',
-                  fulfilledValue.#value,
+                  () => fulfilledValue.value,
                 )
                 break
+
               case 'rejected':
-                this.#promise.callResolutionOrRejectFunc(
+                this.promise.callResolutionOrRejectFunc(
                   'reject',
-                  fulfilledValue.#value,
+                  () => fulfilledValue.value,
                 )
                 break
             }
           } else {
-            this.#promise.callResolutionOrRejectFunc('resolve', fulfilledValue)
+            this.promise.callResolutionOrRejectFunc(
+              'resolve',
+              () => fulfilledValue,
+            )
           }
         } catch (e) {
           fulfilledValue = e
-          this.#promise.callResolutionOrRejectFunc('reject', fulfilledValue)
+          this.promise.callResolutionOrRejectFunc(
+            'reject',
+            () => fulfilledValue,
+          )
         }
         break
+
       case 'rejected':
         let rejectedValue
-        rejectedValue = onRejected(this.#value)
+        rejectedValue = onRejected(this.value)
+
         if (rejectedValue instanceof Promise) {
-          this.#promise = rejectedValue
+          this.promise = rejectedValue
         } else {
-          this.#promise.callResolutionOrRejectFunc('reject', rejectedValue)
+          this.promise.callResolutionOrRejectFunc('reject', () => rejectedValue)
         }
         break
     }
   }
 
-  callResolutionOrRejectFunc(type, value) {
-    this.#state = 'pending'
-    type === 'resolve' ? this.resolutionFunc(value) : this.rejectFunc(value)
+  callResolutionOrRejectFunc(type, getter) {
+    this.state = 'pending'
+    type === 'resolve'
+      ? this.resolutionFunc(getter())
+      : this.rejectFunc(getter())
+  }
+
+  get promise() {
+    return this.#promise
+  }
+
+  get state() {
+    return this.#state
+  }
+
+  set state(value) {
+    this.#state = value
+  }
+
+  get value() {
+    return this.#value
   }
 
   /*

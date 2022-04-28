@@ -215,8 +215,8 @@ describe('Promise.prototype.then(onFulfilled, onRejected)', () => {
         })
       })
 
-      describe('When onFulfilled another pending promise object', () => {
-        it.only("returns promise which follows the onFulfilled's return value and adopts its eventual state", (done) => {
+      describe.only('When onFulfilled another pending promise object', () => {
+        it("returns promise which follows the onFulfilled's return value and adopts its eventual state", (done) => {
           Promise.resolve(123)
             .then(
               (_) =>
