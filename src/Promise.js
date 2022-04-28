@@ -133,55 +133,61 @@ class Promise {
     this.#promise = Promise.resolve()
 
     // queue onFulfilled and onRejected callbacks
-    queueMicrotask(() => {
-      switch (this.#state) {
-        case 'fulfilled':
-          // set promise state to pending and resolution value
-          let fulfilledValue
-          try {
-            fulfilledValue = onFulfilled(this.#value)
-            if (fulfilledValue instanceof Promise) {
-              switch (fulfilledValue.#state) {
-                case 'pending':
-                  break
-
-                case 'fulfilled':
-                  this.#promise.callResolutionOrRejectFunc(
-                    'resolve',
-                    fulfilledValue.#value,
-                  )
-                  break
-                case 'rejected':
-                  this.#promise.callResolutionOrRejectFunc(
-                    'reject',
-                    fulfilledValue.#value,
-                  )
-                  break
-              }
-            } else {
-              this.#promise.callResolutionOrRejectFunc(
-                'resolve',
-                fulfilledValue,
-              )
-            }
-          } catch (e) {
-            fulfilledValue = e
-            this.#promise.callResolutionOrRejectFunc('reject', fulfilledValue)
-          }
-          break
-        case 'rejected':
-          let rejectedValue
-          rejectedValue = onRejected(this.#value)
-          if (rejectedValue instanceof Promise) {
-            this.#promise = rejectedValue
-          } else {
-            this.#promise.callResolutionOrRejectFunc('reject', rejectedValue)
-          }
-          break
-      }
-    })
+    queueMicrotask(() => this.thenQueueMicrotask(onFulfilled, onRejected))
 
     return this.#promise
+  }
+
+  thenQueueMicrotask(onFulfilled, onRejected) {
+    switch (this.#state) {
+      case 'pending':
+        // if Promise is pending state enqueue microtask
+        queueMicrotask(() => this.thenQueueMicrotask(onFulfilled, onRejected))
+        break
+      case 'fulfilled':
+        // set promise state to pending and resolution value
+        let fulfilledValue
+        try {
+          fulfilledValue = onFulfilled(this.#value)
+          if (fulfilledValue instanceof Promise) {
+            switch (fulfilledValue.#state) {
+              case 'pending':
+                queueMicrotask(() =>
+                  this.thenQueueMicrotask(onFulfilled, onRejected),
+                )
+                break
+
+              case 'fulfilled':
+                this.#promise.callResolutionOrRejectFunc(
+                  'resolve',
+                  fulfilledValue.#value,
+                )
+                break
+              case 'rejected':
+                this.#promise.callResolutionOrRejectFunc(
+                  'reject',
+                  fulfilledValue.#value,
+                )
+                break
+            }
+          } else {
+            this.#promise.callResolutionOrRejectFunc('resolve', fulfilledValue)
+          }
+        } catch (e) {
+          fulfilledValue = e
+          this.#promise.callResolutionOrRejectFunc('reject', fulfilledValue)
+        }
+        break
+      case 'rejected':
+        let rejectedValue
+        rejectedValue = onRejected(this.#value)
+        if (rejectedValue instanceof Promise) {
+          this.#promise = rejectedValue
+        } else {
+          this.#promise.callResolutionOrRejectFunc('reject', rejectedValue)
+        }
+        break
+    }
   }
 
   callResolutionOrRejectFunc(type, value) {

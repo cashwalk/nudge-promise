@@ -141,7 +141,7 @@ describe('new Promise(executor)', () => {
 })
 
 describe('Promise.prototype.then(onFulfilled, onRejected)', () => {
-  describe.only('When promise resolves', () => {
+  describe('When promise resolves', () => {
     describe('When onFulfilled is not a function', () => {
       it("returns promise which is fulfilled with the original promise's value as its value", (done) => {
         Promise.resolve(123)
