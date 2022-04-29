@@ -50,15 +50,15 @@ class Promise {
 
     // set resolutionFunc and rejectFunc
     this.resolutionFunc = (value) => {
-      if (this.#state === 'pending') {
-        this.#state = 'fulfilled'
-        this.#value = value
+      if (this.state === 'pending') {
+        this.state = 'fulfilled'
+        this.value = value
       }
     }
     this.rejectFunc = (reason) => {
-      if (this.#state === 'pending') {
-        this.#state = 'rejected'
-        this.#value = reason
+      if (this.state === 'pending') {
+        this.state = 'rejected'
+        this.value = reason
       }
     }
 
@@ -71,6 +71,7 @@ class Promise {
    *
    * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then
    */
+  //////////////////////////// my first approach ///////////////////////////////
   // then(onFulfilled, onRejected) {
   //   // replace internally onFultilled and onRejected
   //   if (typeof onFulfilled !== 'function') {
@@ -129,102 +130,73 @@ class Promise {
       }
     }
 
-    // initiate new promise
-    this.#promise = Promise.resolve()
+    // initiate new promise with pending state
+    this.promise = Promise.resolve()
+    this.promise.state = 'pending'
 
-    // queue onFulfilled and onRejected callbacks
+    // how enqueue microtask after all tasks when promise is pending state?
+    // first. enqueue then method all process on microtask
     queueMicrotask(() => this.thenQueueMicrotask(onFulfilled, onRejected))
 
-    return this.#promise
+    return this.promise
   }
 
   thenQueueMicrotask(onFulfilled, onRejected) {
+    let fulfilledOrRejectedValue
     switch (this.state) {
       case 'pending':
-        // if Promise is pending state enqueue microtask
-        queueMicrotask(() => this.thenQueueMicrotask(onFulfilled, onRejected))
+        // if Promise is pending state enqueue task queue
+        setTimeout(() => this.thenQueueMicrotask(onFulfilled, onRejected),0)
         break
       case 'fulfilled':
-        // set promise state to pending and resolution value
-        let fulfilledValue
+      case 'rejected':
         try {
-          fulfilledValue = onFulfilled(this.value)
+          fulfilledOrRejectedValue = this.state === 'fulfilled' ? onFulfilled(this.value) : onRejected(this.value)
 
-          if (fulfilledValue instanceof Promise) {
-            switch (fulfilledValue.state) {
+          // when fulfilledValue is Promise
+          if (fulfilledOrRejectedValue instanceof Promise) {
+            switch (fulfilledOrRejectedValue.state) {
+              // if pending state, set new promise's state pending and enqueue task queue
               case 'pending':
-                this.state = 'pending'
-                queueMicrotask(() =>
+                setTimeout(() =>
                   this.promise.callResolutionOrRejectFunc(
-                    'resolve',
-                    () => fulfilledValue.value,
-                  ),
+                    'fulfilled',
+                    () => fulfilledOrRejectedValue.value,
+                  ),0
                 )
                 break
 
               case 'fulfilled':
-                this.promise.callResolutionOrRejectFunc(
-                  'resolve',
-                  () => fulfilledValue.value,
-                )
-                break
-
               case 'rejected':
                 this.promise.callResolutionOrRejectFunc(
-                  'reject',
-                  () => fulfilledValue.value,
+                  fulfilledOrRejectedValue.state,
+                  () => fulfilledOrRejectedValue.value,
                 )
                 break
             }
+            // when fulfilled return value is not a promise
           } else {
             this.promise.callResolutionOrRejectFunc(
-              'resolve',
-              () => fulfilledValue,
+              this.state,
+              () => fulfilledOrRejectedValue,
             )
           }
+          // if fulfilled value throw error
         } catch (e) {
-          fulfilledValue = e
+          fulfilledOrRejectedValue = e
           this.promise.callResolutionOrRejectFunc(
-            'reject',
-            () => fulfilledValue,
+            'rejected',
+            () => fulfilledOrRejectedValue,
           )
-        }
-        break
-
-      case 'rejected':
-        let rejectedValue
-        rejectedValue = onRejected(this.value)
-
-        if (rejectedValue instanceof Promise) {
-          this.promise = rejectedValue
-        } else {
-          this.promise.callResolutionOrRejectFunc('reject', () => rejectedValue)
         }
         break
     }
   }
 
   callResolutionOrRejectFunc(type, getter) {
-    this.state = 'pending'
-    type === 'resolve'
+    type === 'fulfilled'
       ? this.resolutionFunc(getter())
       : this.rejectFunc(getter())
-  }
-
-  get promise() {
-    return this.#promise
-  }
-
-  get state() {
-    return this.#state
-  }
-
-  set state(value) {
-    this.#state = value
-  }
-
-  get value() {
-    return this.#value
   }
 
   /*
@@ -233,8 +205,33 @@ class Promise {
    * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/catch
    */
   catch(onRejected) {
-    this.then(() => {}, onRejected)
+    this.then(onRejected, onRejected)
   }
+
+  get promise() {
+    return this.#promise
+  }
+
+  set promise(promise) {
+    this.#promise = promise
+  }
+
+  get state() {
+    return this.#state
+  }
+
+  set state(state) {
+    this.#state = state
+  }
+
+  get value() {
+    return this.#value
+  }
+
+  set value(value) {
+    this.#value = value
+  }
+
 
   /*
    * Promise.prototype.finally
