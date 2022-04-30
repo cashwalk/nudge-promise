@@ -21,7 +21,7 @@ class Promise {
     }, [])
 
     this.promise.callResolutionOrRejectFunc(
-      Array.isArray(iterableResults) ? 'fulfilled' : 'rejected',
+      () => Array.isArray(iterableResults) ? 'fulfilled' : 'rejected',
       () => iterableResults,
     )
   }
@@ -60,16 +60,6 @@ class Promise {
   }
 
   then(onFulfilled, onRejected) {
-    // replace internally onFultilled and onRejected
-    if (typeof onFulfilled !== 'function') {
-      onFulfilled = (value) => value
-    }
-    if (typeof onRejected !== 'function') {
-      onRejected = (reason) => {
-        throw new Error(reason)
-      }
-    }
-
     // initiate new promise with pending state
     this.promise = Promise.resolve()
     this.promise.state = 'pending'
@@ -81,13 +71,24 @@ class Promise {
     return this.promise
   }
 
-  callResolutionOrRejectFunc(type, getter) {
-    type === 'fulfilled'
+  callResolutionOrRejectFunc(typeGetter, getter) {
+    typeGetter() === 'fulfilled'
       ? this.resolutionFunc(getter())
       : this.rejectFunc(getter())
   }
 
   thenQueueMicrotask(onFulfilled, onRejected) {
+    let newPromiseState = 'fulfilled'
+
+    // replace internally onFultilled and onRejected
+    if (typeof onFulfilled !== 'function') {
+      onFulfilled = (value) => value
+    }
+    if (typeof onRejected !== 'function') {
+      if(this.state === 'rejected') newPromiseState = 'rejected'
+      onRejected = (reason) => reason
+    }
+
     let fulfilledOrRejectedValue
     switch (this.state) {
       case 'pending':
@@ -106,7 +107,7 @@ class Promise {
               case 'pending':
                 setTimeout(() =>
                   this.promise.callResolutionOrRejectFunc(
-                    'fulfilled',
+                    () => fulfilledOrRejectedValue.state,
                     () => fulfilledOrRejectedValue.value,
                   ),0
                 )
@@ -115,7 +116,7 @@ class Promise {
               case 'fulfilled':
               case 'rejected':
                 this.promise.callResolutionOrRejectFunc(
-                  fulfilledOrRejectedValue.state,
+                  () => fulfilledOrRejectedValue.state,
                   () => fulfilledOrRejectedValue.value,
                 )
                 break
@@ -123,7 +124,7 @@ class Promise {
             // when fulfilled return value is not a promise
           } else {
             this.promise.callResolutionOrRejectFunc(
-              this.state,
+              () => newPromiseState,
               () => fulfilledOrRejectedValue,
             )
           }
@@ -131,7 +132,7 @@ class Promise {
         } catch (e) {
           fulfilledOrRejectedValue = e
           this.promise.callResolutionOrRejectFunc(
-            'rejected',
+            () => 'rejected',
             () => fulfilledOrRejectedValue,
           )
         }
@@ -147,7 +148,7 @@ class Promise {
    * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/catch
    */
   catch(onRejected) {
-    this.then(onRejected, onRejected)
+    return this.then(undefined, onRejected)
   }
 
   get promise() {
@@ -202,17 +203,22 @@ class Promise {
           if (finallyCallbackValue instanceof Promise) {
             switch (finallyCallbackValue.state) {
               case 'fulfilled':
+                this.promise.callResolutionOrRejectFunc(
+                  () => this.state,
+                  () => this.value,
+                )
+                break
               case 'rejected':
                 this.promise.callResolutionOrRejectFunc(
-                  finallyCallbackValue.state,
-                  () => finallyCallbackValue.state === 'fulfilled' ? this.value : finallyCallbackValue.value,
+                  () => finallyCallbackValue.state,
+                  () => finallyCallbackValue.value,
                 )
                 break
             }
             // when onFinally callback returns not a Promise, return original value
           } else {
             this.promise.callResolutionOrRejectFunc(
-              this.state,
+              () => this.state,
               () => this.value,
             )
           }
@@ -220,7 +226,7 @@ class Promise {
         } catch (e) {
           finallyCallbackValue = e
           this.promise.callResolutionOrRejectFunc(
-            'rejected',
+            () => 'rejected',
             () => finallyCallbackValue,
           )
         }

@@ -587,7 +587,7 @@ describe('Promise.all(iterable)', () => {
   })
 })
 
-describe.only('Chaining test', () => {
+describe('Chaining test', () => {
   it('should pass value through promise chain', (done) => {
     Promise.resolve(10)
       .then((value) => value * 2)
