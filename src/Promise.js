@@ -58,7 +58,7 @@ class Promise {
     // call executor
     executor(this.resolutionFunc, this.rejectFunc)
 
-    // emit unhandledRejection event
+    // enqueue to emit unhandledRejection event on task queue
     setTimeout((promise = this) => {
       if(promise.state === 'rejected') {
         process.emit('unhandledRejection', promise.value, promise)
