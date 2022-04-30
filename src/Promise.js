@@ -57,6 +57,13 @@ class Promise {
 
     // call executor
     executor(this.resolutionFunc, this.rejectFunc)
+
+    // emit unhandledRejection event
+    setTimeout((promise = this) => {
+      if(promise.state === 'rejected') {
+        process.emit('unhandledRejection', promise.value, promise)
+      }
+    }, 0)
   }
 
   then(onFulfilled, onRejected) {
