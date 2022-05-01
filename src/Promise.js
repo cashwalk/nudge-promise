@@ -229,7 +229,7 @@ class Promise {
               () => this.value,
             )
           }
-          // if fulfilled value throw error
+          // if callback value throw error
         } catch (e) {
           finallyCallbackValue = e
           this.promise.callResolutionOrRejectFunc(
