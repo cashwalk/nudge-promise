@@ -568,8 +568,9 @@ describe('Promise.all(iterable)', () => {
         Promise.resolve(123),
         Promise.resolve(456),
         Promise.resolve(789),
+        msleep(0).then(() => 1000),
       ]).then((value) => {
-        expect(value).to.deep.equal([123, 456, 789])
+        expect(value).to.deep.equal([123, 456, 789, 1000])
         done()
       })
     })
@@ -579,6 +580,7 @@ describe('Promise.all(iterable)', () => {
         Promise.resolve(123),
         Promise.resolve(456),
         Promise.reject(789),
+        msleep(0).then(() => 1000),
       ]).catch((value) => {
         expect(value).to.equal(789)
         done()
@@ -608,3 +610,7 @@ describe('Chaining test', () => {
       })
   })
 })
+
+function msleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
