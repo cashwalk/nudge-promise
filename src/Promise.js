@@ -14,12 +14,20 @@ class Promise {
   }
 
   static promiseAllMicrotask(iterable) {
+    // if some promise not resolved yet enqueue on task queue
+    if(!iterable.every(v => v.state !== 'pending')) {
+      setTimeout(() => this.promiseAllMicrotask(iterable), 0)
+      return
+    }
+
+    // reduce iterable for catching rejected promise
     const iterableResults = iterable.reduce((prev, cur) => {
       if(!Array.isArray(prev)) return prev
 
       return cur.state === 'fulfilled' ? prev.concat(cur.value) : cur.value
     }, [])
 
+    // update state and value of this promise
     this.promise.callResolutionOrRejectFunc(
       () => Array.isArray(iterableResults) ? 'fulfilled' : 'rejected',
       () => iterableResults,

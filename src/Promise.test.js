@@ -552,7 +552,7 @@ describe('Promise.reject(reason)', () => {
   })
 })
 
-describe('Promise.all(iterable)', () => {
+describe.only('Promise.all(iterable)', () => {
   describe('When the iterable passed is empty', () => {
     it('returns a promise that resolves to an empty array', (done) => {
       Promise.all([]).then((value) => {
