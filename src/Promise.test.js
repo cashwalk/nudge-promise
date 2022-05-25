@@ -142,12 +142,23 @@ describe('new Promise(executor)', () => {
 
 describe('Promise.prototype.then(onFulfilled, onRejected)', () => {
   describe('When promise resolves', () => {
+    describe('calling then method again', () => {
+      it('should return previous resolved promise', (done) => {
+        const p1 = Promise.resolve()
+        const p2 = p1.then(() => 2)
+        const p3 = p1.then(() => 3)
+        expect(p1.promise).to.equal(p2)
+        expect(p2).to.equal(p3)
+        expect(p1.promise).to.equal(p3)
+      })
+    })
+
     describe('async operation', () => {
       it("returns promise which is fulfilled with the original promise's value as its value", (done) => {
         new Promise((resolve, reject) => {
           setTimeout(() => resolve(123), 0)
         })
-          .then(value => {
+          .then((value) => {
             return value
           })
           .then((value) => {
@@ -553,6 +564,17 @@ describe('Promise.reject(reason)', () => {
 })
 
 describe('Promise.all(iterable)', () => {
+  describe('When Promise.all method used', () => {
+    it('do not have promise instance in the Promise class', (done) => {
+      Promise.all([]).then((value) => {
+        expect(value).to.deep.equal([])
+        done()
+      })
+
+      expect(Promise.promise).to.undefined()
+    })
+  })
+
   describe('When the iterable passed is empty', () => {
     it('returns a promise that resolves to an empty array', (done) => {
       Promise.all([]).then((value) => {
