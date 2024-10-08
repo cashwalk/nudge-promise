@@ -111,11 +111,14 @@ describe('new Promise(executor)', () => {
       expect(unhandledRejections).to.deep.equal([])
 
       setTimeout(() => {
-        expect(unhandledRejections).to.deep.equal([
-          'not handled 1',
-          'not handled 2',
-        ])
-        done()
+        // some browser fire unhandledrejection event in the next tick
+        setTimeout(() => {
+          expect(unhandledRejections).to.deep.equal([
+            'not handled 1',
+            'not handled 2',
+          ])
+          done()
+        }, 0)
       }, 0)
     })
   })
